@@ -8,7 +8,13 @@ model = joblib.load("models/model.pkl")
 
 @app.route("/")
 def home():
-    return "Crypto ML Platform is Running 🚀"
+    return {
+        "message": "Crypto ML Platform API is running",
+        "endpoints": {
+            "/predict": "POST crypto price data",
+            "/health": "GET service health"
+        }
+    }
 
 @app.route("/predict", methods=["POST"])
 def predict():
