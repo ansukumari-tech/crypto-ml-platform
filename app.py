@@ -16,6 +16,10 @@ def home():
         }
     }
 
+@app.route("/healthz")
+def health():
+    return "OK"
+
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.json
