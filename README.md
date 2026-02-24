@@ -1,20 +1,17 @@
-# Cryptocurrency API Driven ML Platform
+# Crypto ML Platform 🚀
 
-## Description
-Collects real-time crypto price data from CoinGecko API and predicts next-day price using ML.
+Live Demo: https://crypto-ml-platform.onrender.com
 
 ## Features
-- 5000+ data records collected
-- Supervised ML model (82% accuracy)
-- REST API for predictions
-- Deployed on cloud
-- GitHub version controlled
+- Cryptocurrency data collection using CoinGecko API
+- Machine Learning prediction model
+- Flask REST API
+- Frontend UI for predictions
+- Deployed on Render
+
+## API Endpoints
+- GET /healthz
+- POST /predict
 
 ## Tech Stack
-Python, Flask, Pandas, scikit-learn, CoinGecko API
-
-## How to Run
-1. pip install -r requirements.txt
-2. python data_collector.py
-3. python train_model.py
-4. python app.py
+Python, Flask, Scikit-learn, Pandas, HTML, Render, GitHub
