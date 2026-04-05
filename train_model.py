@@ -189,8 +189,27 @@ def train_all():
     os.makedirs(MODEL_DIR, exist_ok=True)
     mlflow.set_experiment("crypto-prediction")
 
-    df_raw = pd.read_csv(DATA_FILE, parse_dates=["timestamp"])
+    # ── Load CSV and handle different column formats ──────────────────────────
+    df_raw = pd.read_csv(DATA_FILE)
+
+    # Fix timestamp column — could be unix ms (int) or a date string
+    if "timestamp" in df_raw.columns:
+        try:
+            df_raw["timestamp"] = pd.to_datetime(df_raw["timestamp"], unit="ms")
+        except Exception:
+            df_raw["timestamp"] = pd.to_datetime(df_raw["timestamp"])
+    elif "date" in df_raw.columns:
+        df_raw["timestamp"] = pd.to_datetime(df_raw["date"])
+    else:
+        raise ValueError("CSV must have a 'timestamp' or 'date' column")
+
+    # Rename volume column if needed
+    if "volume" in df_raw.columns and "total_volume_usd" not in df_raw.columns:
+        df_raw["total_volume_usd"] = df_raw["volume"]
+
     print(f"Loaded {len(df_raw):,} rows from {DATA_FILE}")
+    print(f"Columns: {list(df_raw.columns)}")
+    print(f"Coins found: {df_raw['coin'].unique().tolist()}")
 
     all_models = {}
     coins = df_raw["coin"].unique().tolist()
@@ -202,13 +221,13 @@ def train_all():
 
         for coin in coins:
             coin_df = df_raw[df_raw["coin"] == coin].copy()
-            if len(coin_df) < 60:
+            if len(coin_df) < 30:
                 print(f"  ⚠ Skipping {coin}: not enough data ({len(coin_df)} rows)")
                 continue
 
             prepared = prepare_features(coin_df)
-            if len(prepared) < 50:
-                print(f"  ⚠ Skipping {coin}: not enough rows after feature engineering")
+            if len(prepared) < 30:
+                print(f"  ⚠ Skipping {coin}: not enough rows after feature engineering ({len(prepared)} rows)")
                 continue
 
             result = train_coin(coin, prepared)
