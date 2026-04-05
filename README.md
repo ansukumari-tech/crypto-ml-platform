@@ -50,7 +50,11 @@ python -m venv .venv
 # macOS / Linux
 source .venv/bin/activate
 
-# Windows
+# Windows (Command Prompt)
+.venv\Scripts\activate.bat
+
+# Windows (PowerShell) — run this first if activation fails
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 .venv\Scripts\activate
 
 pip install -r requirements.txt
@@ -62,8 +66,9 @@ pip install -r requirements.txt
 python data_collector.py
 ```
 
-This fetches ~3,650 rows (365 days × 10 coins) and saves them to `data/crypto_data.csv`.  
-> ⏳ Takes ~60 seconds due to CoinGecko free-tier rate limits (1 req/6 s).
+This fetches ~3,650 rows (365 days × 10 coins) and saves them to `data/crypto_data.csv`.
+
+> ⏳ Takes ~2 minutes due to CoinGecko free-tier rate limits. If you see `429 Too Many Requests` errors for some coins, wait a few minutes and re-run — already-fetched coins will be overwritten safely.
 
 ### 3. Train models
 
@@ -73,7 +78,22 @@ python train_model.py
 
 Trains classifier + regressor for each coin using 5-fold walk-forward CV and saves `models/model.pkl`. MLflow logs metrics to `mlruns/`.
 
-> ⏳ Expect 2–5 minutes depending on your machine.
+What you should see:
+```
+Loaded 3,650 rows from data/crypto_data.csv
+Columns: ['date', 'open', 'high', 'low', 'close', 'volume', 'coin', 'timestamp', ...]
+Coins found: ['bitcoin', 'ethereum', ...]
+
+───────────────────────────────────────────────────────
+  Training: bitcoin  (335 rows)
+───────────────────────────────────────────────────────
+  Direction accuracy : 58.00% ± 3.00%
+  Pct-change R²      : 0.0312 ± 0.0100
+...
+✅ Models saved → models\model.pkl
+```
+
+> ⏳ Expect 2–5 minutes depending on your machine. Requires at least 30 rows per coin after feature engineering.
 
 ### 4. Run the server
 
@@ -125,7 +145,7 @@ Open **http://127.0.0.1:5000** in your browser.
 | Trend | EMA 12/26, MACD, MACD signal/diff, SMA 20/50 |
 | Momentum | RSI 14, Stochastic K/D, Williams %R |
 | Volatility | Bollinger Bands (upper/lower/width/pct), ATR 14 |
-| Volume | OBV |
+| Volume | OBV (uses `volume` column, mapped to `total_volume_usd`) |
 | Price-derived | price_range, close vs SMA20/50 |
 | Lag features | close & return lags: 1, 2, 3, 7, 14, 30 days |
 | Volatility | Rolling vol 7d / 30d |
@@ -143,7 +163,16 @@ GradientBoostingRegressor    →  % Price Change
 
 Both wrapped in:  StandardScaler → GradientBoosting Pipeline
 Validation:       TimeSeriesSplit (5 folds, no data leakage)
+Minimum rows:     30 per coin after feature engineering
 ```
+
+### CSV Format Compatibility
+
+`train_model.py` automatically handles different CSV formats:
+
+- `timestamp` column can be **Unix milliseconds** (int) or a **date string**
+- Falls back to `date` column if `timestamp` is missing
+- `volume` column is automatically mapped to `total_volume_usd` for OBV calculation
 
 ---
 
@@ -152,9 +181,8 @@ Validation:       TimeSeriesSplit (5 folds, no data leakage)
 View experiment runs locally:
 
 ```bash
-mlflow ui
-# Open http://127.0.0.1:5000 (use a different port if Flask is running)
 mlflow ui --port 5001
+# Open http://127.0.0.1:5001
 ```
 
 Metrics logged per coin:
@@ -167,9 +195,9 @@ Metrics logged per coin:
 
 The scheduler in `app.py` retrains all models every day at **01:00 UTC** automatically. You can also trigger a manual retrain:
 
-- **UI**: Click the `⟳ Retrain` button in the dashboard header.
+- **UI**: Click the `⟳ Retrain` button in the dashboard header
 - **API**: `POST /api/retrain`
-- **CLI**: Run `python data_collector.py && python train_model.py`
+- **CLI**: `python data_collector.py && python train_model.py`
 
 ---
 
@@ -187,6 +215,20 @@ The scheduler in `app.py` retrains all models every day at **01:00 UTC** automat
 | DOGE | dogecoin |
 | ADA | cardano |
 | AVAX | avalanche-2 |
+
+---
+
+## 🐛 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `model.pkl not found` | Run `python train_model.py` first |
+| `No history for coin` | Run `python data_collector.py` first |
+| All coins skipped during training | Your CSV has fewer than 30 rows per coin — re-run `data_collector.py` |
+| CoinGecko 429 error | Free-tier rate limit hit — wait 60s and retry, or increase `time.sleep()` to `15` in `data_collector.py` |
+| Dashboard shows `—` everywhere | Models not loaded — stop server, retrain, restart `app.py` |
+| PowerShell activation error | Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` first |
+| Port 5000 already in use | Change `port=5000` to `port=5001` in `app.py` |
 
 ---
 
