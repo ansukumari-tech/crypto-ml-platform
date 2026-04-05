@@ -1,15 +1,53 @@
-# Virtual environment
+# ── Virtual Environment ────────────────────────────────────────────────────────
 .venv/
+venv/
+env/
+ENV/
 
-# Python cache
+# ── Python ─────────────────────────────────────────────────────────────────────
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
 
-# ML logs
-mlruns/
+# ── Data ───────────────────────────────────────────────────────────────────────
+# Keep the data folder tracked but ignore large/generated CSV files
+data/crypto_data.csv
 
-# Model files
+# ── Models ─────────────────────────────────────────────────────────────────────
+# Trained model files can be large — exclude from git
 models/*.pkl
+models/*.joblib
 
-# Env variables
+# ── MLflow ─────────────────────────────────────────────────────────────────────
+mlruns/
+mlartifacts/
+
+# ── Environment variables ──────────────────────────────────────────────────────
 .env
+.env.local
+.env.production
+
+# ── OS files ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editor ───────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Pytest / Coverage ──────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
