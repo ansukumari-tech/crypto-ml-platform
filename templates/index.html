@@ -1,38 +1,530 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Crypto ML Platform</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CryptoOracle — ML Prediction Platform</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #080c14;
+    --surface:  #0d1420;
+    --card:     #111827;
+    --border:   #1e2d45;
+    --accent:   #00d4aa;
+    --accent2:  #6366f1;
+    --up:       #22d3a0;
+    --down:     #f43f5e;
+    --muted:    #4b6280;
+    --text:     #e2e8f0;
+    --sub:      #94a3b8;
+    --mono:     'Space Mono', monospace;
+    --sans:     'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid background ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,212,170,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 36px;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+    background: rgba(8,12,20,.85);
+  }
+  .logo {
+    font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .pill {
+    font-family: var(--mono); font-size: 11px;
+    padding: 4px 12px; border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--sub);
+  }
+  .pill.live { border-color: var(--accent); color: var(--accent); }
+  .pill.live::before { content:'● '; font-size: 8px; }
+
+  /* ── Layout ── */
+  main { position: relative; z-index: 1; padding: 28px 36px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── Coin selector ── */
+  .selector-row {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px;
+  }
+  .coin-btn {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    padding: 8px 16px; border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--sub);
+    cursor: pointer; transition: all .15s;
+    text-transform: uppercase;
+  }
+  .coin-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .coin-btn.active {
+    background: var(--accent); color: var(--bg);
+    border-color: var(--accent); font-weight: 700;
+  }
+
+  /* ── Stats row ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(2,1fr); } }
+
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px;
+    transition: border-color .2s;
+  }
+  .stat-card:hover { border-color: var(--muted); }
+  .stat-label { font-size: 11px; color: var(--sub); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .stat-value { font-family: var(--mono); font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--sub); margin-top: 6px; font-family: var(--mono); }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+  .neutral { color: var(--accent2); }
+
+  /* ── Direction badge ── */
+  .direction-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 24px; font-weight: 700;
+    padding: 4px 14px; border-radius: 8px;
+  }
+  .direction-badge.up { background: rgba(34,211,160,.12); color: var(--up); }
+  .direction-badge.down { background: rgba(244,63,94,.12); color: var(--down); }
+
+  /* ── Charts grid ── */
+  .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 1000px) { .charts-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+  }
+  .chart-title {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--sub); margin-bottom: 16px;
+  }
+  .chart-wrap { position: relative; }
+
+  /* ── Model table ── */
+  .table-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; margin-bottom: 24px;
+  }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+  thead th {
+    text-align: left; padding: 8px 12px; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--sub);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid rgba(30,45,69,.5); transition: background .1s; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 12px; }
+  .coin-name { color: var(--text); font-weight: 700; text-transform: uppercase; }
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width .4s; }
+
+  /* ── Retrain button ── */
+  .retrain-btn {
+    font-family: var(--mono); font-size: 12px;
+    padding: 10px 24px; border-radius: 8px;
+    border: 1px solid var(--accent2);
+    background: transparent; color: var(--accent2);
+    cursor: pointer; transition: all .15s;
+  }
+  .retrain-btn:hover { background: var(--accent2); color: #fff; }
+  .retrain-btn:disabled { opacity: .4; cursor: default; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; z-index: 999;
+    font-family: var(--mono); font-size: 12px;
+    padding: 12px 20px; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--accent);
+    color: var(--accent); opacity: 0; transition: opacity .3s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ── Loading spinner ── */
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── RSI gauge ── */
+  .rsi-gauge { text-align: center; padding: 8px 0; }
+  .rsi-arc { display: block; margin: 0 auto; }
+  .rsi-val { font-family: var(--mono); font-size: 32px; font-weight: 700; }
+
+  /* ── Confidence meter ── */
+  .conf-bar-wrap { margin-top: 8px; }
+  .conf-bar-bg { width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .conf-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width .5s; }
+
+  /* ── MACD section ── */
+  .macd-label { font-family: var(--mono); font-size: 11px; color: var(--sub); }
+</style>
 </head>
 <body>
-    <h1>Crypto Price Prediction</h1>
 
-    <form id="predictForm">
-        <label>Previous Price:</label>
-        <input type="number" id="price" required>
-        <br><br>
-        <button type="submit">Predict</button>
-    </form>
+<header>
+  <div class="logo">Crypto<span>Oracle</span></div>
+  <div class="header-right">
+    <span class="pill live" id="live-label">LIVE</span>
+    <span class="pill" id="model-loaded-at">Loading...</span>
+    <button class="retrain-btn" id="retrain-btn" onclick="triggerRetrain()">⟳ Retrain</button>
+  </div>
+</header>
 
-    <h2 id="result"></h2>
+<main>
 
-    <script>
-        document.getElementById("predictForm").addEventListener("submit", async function(e) {
-            e.preventDefault();
+  <!-- Coin selector -->
+  <div class="selector-row" id="coin-selector"></div>
 
-            const price = document.getElementById("price").value;
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Signal</div>
+      <div class="stat-value" id="stat-direction">—</div>
+      <div class="stat-sub" id="stat-confidence">Confidence: —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Current price</div>
+      <div class="stat-value neutral" id="stat-price">—</div>
+      <div class="stat-sub" id="stat-predicted-price">Predicted: —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Predicted Δ%</div>
+      <div class="stat-value" id="stat-pct">—</div>
+      <div class="stat-sub">next candle</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Model accuracy</div>
+      <div class="stat-value neutral" id="stat-accuracy">—</div>
+      <div class="stat-sub" id="stat-r2">R²: —</div>
+    </div>
+  </div>
 
-            const response = await fetch("/predict", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ previous_price: price })
-            });
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Price history (90 days)</div>
+      <div class="chart-wrap" style="height:280px">
+        <canvas id="price-chart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">RSI (14)</div>
+      <div class="chart-wrap" style="height:130px;margin-bottom:12px">
+        <canvas id="rsi-chart"></canvas>
+      </div>
+      <div class="chart-title macd-label" style="margin-top:8px">MACD</div>
+      <div class="chart-wrap" style="height:120px">
+        <canvas id="macd-chart"></canvas>
+      </div>
+    </div>
+  </div>
 
-            const data = await response.json();
-            document.getElementById("result").innerText =
-                "Predicted Price: " + data.predicted_price;
-        });
-    </script>
+  <!-- Confidence bar -->
+  <div class="chart-card" style="margin-bottom:24px">
+    <div class="chart-title">Prediction confidence</div>
+    <div style="font-family:var(--mono);font-size:13px;color:var(--sub);margin-bottom:6px" id="conf-label">—</div>
+    <div class="conf-bar-bg"><div class="conf-bar-fill" id="conf-bar" style="width:0%"></div></div>
+  </div>
+
+  <!-- All models table -->
+  <div class="table-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="chart-title" style="margin:0">All models performance</div>
+      <span id="table-loading"><span class="spinner"></span></span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Coin</th>
+          <th>Signal</th>
+          <th>Δ% predicted</th>
+          <th>Confidence</th>
+          <th>Direction accuracy</th>
+          <th>Reg R²</th>
+          <th>Current price</th>
+        </tr>
+      </thead>
+      <tbody id="model-table-body">
+        <tr><td colspan="7" style="color:var(--sub);text-align:center;padding:24px">Loading predictions...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let activeCoin = null;
+let priceChart = null, rsiChart = null, macdChart = null;
+const COIN_LABELS = {
+  bitcoin:'BTC', ethereum:'ETH', tether:'USDT', binancecoin:'BNB',
+  solana:'SOL', ripple:'XRP', 'usd-coin':'USDC', dogecoin:'DOGE',
+  cardano:'ADA', 'avalanche-2':'AVAX'
+};
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, ms=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), ms);
+}
+
+// ── Chart helpers ──────────────────────────────────────────────────────────────
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { mode:'index', intersect: false,
+    backgroundColor:'#0d1420', borderColor:'#1e2d45', borderWidth:1,
+    titleColor:'#94a3b8', bodyColor:'#e2e8f0', titleFont:{family:'Space Mono',size:11} }},
+  scales: {
+    x: { grid:{color:'rgba(30,45,69,.5)'}, ticks:{color:'#4b6280',font:{family:'Space Mono',size:10}, maxTicksLimit:8} },
+    y: { grid:{color:'rgba(30,45,69,.5)'}, ticks:{color:'#4b6280',font:{family:'Space Mono',size:10}} }
+  }
+};
+
+function buildPriceChart(labels, prices) {
+  if (priceChart) priceChart.destroy();
+  const ctx = document.getElementById('price-chart').getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,280);
+  grad.addColorStop(0,'rgba(0,212,170,.18)'); grad.addColorStop(1,'rgba(0,212,170,0)');
+  priceChart = new Chart(ctx, {
+    type:'line',
+    data: { labels, datasets:[{
+      data: prices, borderColor:'#00d4aa', borderWidth:2,
+      backgroundColor: grad, fill:true, tension:0.3, pointRadius:0, pointHoverRadius:4,
+      pointHoverBackgroundColor:'#00d4aa'
+    }]},
+    options: { ...chartDefaults, interaction:{ mode:'index', intersect:false } }
+  });
+}
+
+function buildRsiChart(labels, rsiValues) {
+  if (rsiChart) rsiChart.destroy();
+  const ctx = document.getElementById('rsi-chart').getContext('2d');
+  rsiChart = new Chart(ctx, {
+    type:'line',
+    data: { labels, datasets:[{
+      data: rsiValues, borderColor:'#6366f1', borderWidth:1.5,
+      fill:false, tension:0.3, pointRadius:0
+    }]},
+    options: {
+      ...chartDefaults,
+      scales: {
+        ...chartDefaults.scales,
+        y: { ...chartDefaults.scales.y, min:0, max:100,
+          ticks:{color:'#4b6280',font:{family:'Space Mono',size:10},
+            callback: v => [30,70].includes(v) ? v : (v===50?'':'')}
+        }
+      },
+      plugins: {
+        ...chartDefaults.plugins,
+        annotation: {}
+      }
+    }
+  });
+}
+
+function buildMacdChart(labels, macdLine, signalLine) {
+  if (macdChart) macdChart.destroy();
+  const ctx = document.getElementById('macd-chart').getContext('2d');
+  macdChart = new Chart(ctx, {
+    type:'line',
+    data: { labels, datasets:[
+      { data: macdLine,   borderColor:'#00d4aa', borderWidth:1.5, fill:false, tension:0.3, pointRadius:0, label:'MACD' },
+      { data: signalLine, borderColor:'#f43f5e', borderWidth:1.5, fill:false, tension:0.3, pointRadius:0, label:'Signal' }
+    ]},
+    options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend:{ display:true,
+      labels:{color:'#94a3b8',font:{family:'Space Mono',size:10},boxWidth:12}}} }
+  });
+}
+
+// ── Technical indicators (client-side from price history) ──────────────────────
+function calcEMA(data, period) {
+  const k = 2/(period+1); let ema = [];
+  data.forEach((v,i) => {
+    if (i < period-1) { ema.push(null); return; }
+    if (i === period-1) { ema.push(data.slice(0,period).reduce((a,b)=>a+b,0)/period); return; }
+    ema.push(v * k + ema[ema.length-1] * (1-k));
+  });
+  return ema;
+}
+
+function calcRSI(data, period=14) {
+  let rsi = Array(data.length).fill(null);
+  for (let i=period; i<data.length; i++) {
+    let gains=0, losses=0;
+    for (let j=i-period+1; j<=i; j++) {
+      const d = data[j]-data[j-1];
+      if(d>0) gains+=d; else losses-=d;
+    }
+    const rs = losses===0 ? 100 : gains/losses;
+    rsi[i] = 100 - 100/(1+rs);
+  }
+  return rsi;
+}
+
+function calcMACD(data) {
+  const ema12 = calcEMA(data,12), ema26 = calcEMA(data,26);
+  const macd = data.map((_,i) => ema12[i]!=null&&ema26[i]!=null ? ema12[i]-ema26[i] : null);
+  const validMacd = macd.map(v=>v??0);
+  const signal = calcEMA(validMacd, 9);
+  return { macd, signal };
+}
+
+// ── Load coin ──────────────────────────────────────────────────────────────────
+async function loadCoin(coinId) {
+  activeCoin = coinId;
+  document.querySelectorAll('.coin-btn').forEach(b => b.classList.toggle('active', b.dataset.coin===coinId));
+
+  // Prediction
+  const pred = await fetch(`/api/predict/${coinId}`).then(r=>r.json()).catch(()=>null);
+  if (pred && !pred.error) {
+    const isUp = pred.predicted_direction === 'UP';
+    const dirEl = document.getElementById('stat-direction');
+    dirEl.className = `stat-value direction-badge ${isUp?'up':'down'}`;
+    dirEl.textContent = (isUp ? '▲ ' : '▼ ') + pred.predicted_direction;
+
+    document.getElementById('stat-confidence').textContent = `Confidence: ${pred.confidence_pct}%`;
+    document.getElementById('stat-price').textContent = `$${Number(pred.current_price).toLocaleString()}`;
+    document.getElementById('stat-predicted-price').textContent = `Predicted: $${Number(pred.predicted_price).toLocaleString()}`;
+
+    const pctEl = document.getElementById('stat-pct');
+    pctEl.textContent = (pred.predicted_pct_change >= 0 ? '+' : '') + pred.predicted_pct_change + '%';
+    pctEl.className = 'stat-value ' + (pred.predicted_pct_change >= 0 ? 'up' : 'down');
+
+    document.getElementById('stat-accuracy').textContent = pred.model_accuracy + '%';
+    document.getElementById('stat-r2').textContent = `R²: ${pred.model_r2}`;
+
+    document.getElementById('conf-label').textContent =
+      `Model is ${pred.confidence_pct}% confident the price will go ${pred.predicted_direction} next candle`;
+    document.getElementById('conf-bar').style.width = pred.confidence_pct + '%';
+  }
+
+  // History + charts
+  const hist = await fetch(`/api/history/${coinId}`).then(r=>r.json()).catch(()=>null);
+  if (hist && hist.history && hist.history.length) {
+    const labels = hist.history.map(r => r.timestamp.slice(5,10));
+    const prices = hist.history.map(r => r.close);
+    buildPriceChart(labels, prices);
+    const rsi = calcRSI(prices);
+    buildRsiChart(labels, rsi);
+    const { macd, signal } = calcMACD(prices);
+    buildMacdChart(labels, macd, signal);
+  }
+}
+
+// ── Load all-coin table ────────────────────────────────────────────────────────
+async function loadAllPredictions() {
+  const [allPreds, stats] = await Promise.all([
+    fetch('/api/predict/all').then(r=>r.json()).catch(()=>({})),
+    fetch('/api/model/stats').then(r=>r.json()).catch(()=>({models:[]}))
+  ]);
+  document.getElementById('table-loading').innerHTML = '';
+
+  const statMap = {};
+  (stats.models||[]).forEach(m => statMap[m.coin] = m);
+
+  const rows = Object.entries(allPreds).map(([coin, p]) => {
+    if (p.error) return '';
+    const isUp = p.predicted_direction === 'UP';
+    const label = COIN_LABELS[coin] || coin.toUpperCase();
+    const pctStr = (p.predicted_pct_change>=0?'+':'')+p.predicted_pct_change+'%';
+    const acc = p.model_accuracy||0;
+    return `<tr style="cursor:pointer" onclick="loadCoin('${coin}')">
+      <td class="coin-name">${label}</td>
+      <td><span style="font-family:var(--mono);font-size:13px;padding:3px 10px;border-radius:4px;
+        background:${isUp?'rgba(34,211,160,.1)':'rgba(244,63,94,.1)'};
+        color:${isUp?'var(--up)':'var(--down)'}">${isUp?'▲ UP':'▼ DOWN'}</span></td>
+      <td style="font-family:var(--mono);color:${p.predicted_pct_change>=0?'var(--up)':'var(--down)'}">${pctStr}</td>
+      <td style="font-family:var(--mono)">${p.confidence_pct}%</td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill" style="width:${acc}%"></div></div>
+          <span style="font-family:var(--mono);font-size:12px;min-width:40px">${acc}%</span>
+        </div>
+      </td>
+      <td style="font-family:var(--mono);color:var(--sub)">${p.model_r2}</td>
+      <td style="font-family:var(--mono)">$${Number(p.current_price).toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('model-table-body').innerHTML = rows || '<tr><td colspan="7" style="color:var(--sub);text-align:center;padding:24px">No predictions available. Run train_model.py first.</td></tr>';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  const coinsResp = await fetch('/api/coins').then(r=>r.json()).catch(()=>({coins:[]}));
+  const coins = coinsResp.coins || [];
+
+  if (coinsResp.loaded_at) {
+    const d = new Date(coinsResp.loaded_at+'Z');
+    document.getElementById('model-loaded-at').textContent = 'Updated ' + d.toLocaleTimeString();
+  }
+
+  const sel = document.getElementById('coin-selector');
+  coins.forEach(coin => {
+    const btn = document.createElement('button');
+    btn.className = 'coin-btn';
+    btn.dataset.coin = coin;
+    btn.textContent = COIN_LABELS[coin] || coin.toUpperCase();
+    btn.onclick = () => loadCoin(coin);
+    sel.appendChild(btn);
+  });
+
+  if (coins.length) loadCoin(coins[0]);
+  loadAllPredictions();
+
+  // Auto-refresh predictions every 60s
+  setInterval(loadAllPredictions, 60000);
+}
+
+// ── Retrain trigger ────────────────────────────────────────────────────────────
+async function triggerRetrain() {
+  const btn = document.getElementById('retrain-btn');
+  btn.disabled = true; btn.textContent = '⟳ Retraining...';
+  const resp = await fetch('/api/retrain', {method:'POST'}).then(r=>r.json()).catch(()=>null);
+  toast(resp?.message || 'Retrain started — check server logs');
+  setTimeout(() => { btn.disabled=false; btn.textContent='⟳ Retrain'; }, 5000);
+}
+
+Chart.defaults.font.family = 'Space Mono';
+init();
+</script>
 </body>
 </html>
