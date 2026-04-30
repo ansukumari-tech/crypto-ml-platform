@@ -235,9 +235,3 @@ The scheduler in `app.py` retrains all models every day at **01:00 UTC** automat
 ## ⚠️ Disclaimer
 
 This project is for **educational and research purposes only**. Cryptocurrency markets are highly volatile. These model predictions are **not financial advice** and should never be used as the sole basis for trading decisions.
-
----
-
-## 📄 License
-
-MIT
