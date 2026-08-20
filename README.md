@@ -42,7 +42,7 @@ data_collector.py  →  crypto_data.csv  →  train_model.py  →  model.pkl  �
 ### 1. Clone & set up environment
 
 ```bash
-git clone https://github.com/<your-username>/crypto-ml-platform.git
+git clone https://github.com/ansukumari-tech/crypto-ml-platform.git
 cd crypto-ml-platform
 
 python -m venv .venv
